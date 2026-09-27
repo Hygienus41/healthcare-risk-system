@@ -1,0 +1,236 @@
+Your Synthea export has a clear relational structure, and we can use that to build the healthcare risk system properly.
+
+1. The central table: patients
+
+This is our patient dimension:
+
+patients
+   │
+   ├── encounters
+   ├── conditions
+   ├── observations
+   ├── medications
+   ├── procedures
+   ├── allergies
+   ├── immunizations
+   ├── devices
+   ├── careplans
+   ├── imaging_studies
+   ├── supplies
+   └── payer_transitions
+
+The key:
+
+patients.Id
+
+connects to the PATIENT/PATIENTID fields in the clinical and financial tables.
+
+2. encounters is our second major hub
+
+This is extremely important for the eventual risk model.
+
+patients
+   │
+   └── encounters
+          │
+          ├── conditions
+          ├── observations
+          ├── medications
+          ├── procedures
+          ├── allergies
+          ├── imaging_studies
+          ├── immunizations
+          ├── devices
+          ├── careplans
+          └── supplies
+
+The important relationship is:
+
+patients.Id
+      ↓
+encounters.PATIENT
+
+encounters.Id
+      ↓
+other_table.ENCOUNTER
+
+That means we can eventually reconstruct a patient's clinical timeline.
+
+For example:
+
+Patient
+   ↓
+Encounter
+   ↓
+Diagnosis
+   ↓
+Observation
+   ↓
+Medication
+   ↓
+Procedure
+
+That's exactly the kind of structure we need for meaningful risk analytics.
+
+3. Your observations table is huge
+
+You have:
+
+4,355,508 observations
+
+with:
+
+DATE
+PATIENT
+ENCOUNTER
+CATEGORY
+CODE
+DESCRIPTION
+VALUE
+UNITS
+TYPE
+
+This could become one of the most valuable tables for feature engineering.
+
+For example, depending on the observations generated, we may be able to derive things such as:
+
+abnormal measurements
+trends over time
+frequency of measurements
+latest measurement before an encounter
+changes between measurements
+counts of specific clinical observations
+
+And because it has both:
+
+PATIENT
+ENCOUNTER
+
+we can connect measurements to specific clinical events.
+
+4. The financial side is also very interesting
+
+You have:
+
+claims
+    ↓
+claims_transactions
+
+with:
+
+629,678 claims
+
+and 5,547,678 claim transactions.
+
+That gives us a completely different analytical perspective:
+
+Clinical data
+     +
+Financial data
+     ↓
+Healthcare utilization + cost analysis
+
+For example, eventually we can investigate relationships between:
+
+patient characteristics
+        ↓
+clinical conditions
+        ↓
+encounters
+        ↓
+procedures / medications
+        ↓
+healthcare costs
+
+That's much more powerful than building a model from a single CSV.
+
+5. Your project is starting to look like a real healthcare data warehouse
+
+Conceptually:
+
+                    ┌──────────────┐
+                    │   PATIENTS   │
+                    └──────┬───────┘
+                           │
+             ┌─────────────┴──────────────┐
+             │                            │
+       ┌─────▼─────┐                ┌─────▼──────┐
+       │ ENCOUNTERS│                │   PAYERS   │
+       └─────┬─────┘                └────────────┘
+             │
+   ┌─────────┼──────────┬───────────┬───────────┐
+   │         │          │           │           │
+   ▼         ▼          ▼           ▼           ▼
+conditions observations medications procedures imaging
+   │         │          │           │
+   └─────────┴──────────┴───────────┘
+                     │
+                     ▼
+             FEATURE ENGINEERING
+                     │
+                     ▼
+               RISK MODEL
+                     │
+                     ▼
+             EXPLAINABILITY
+                     │
+                     ▼
+              HEALTHCARE APP
+
+And separately:
+
+patients
+   │
+encounters
+   │
+claims
+   │
+claims_transactions
+   │
+   ▼
+COST / UTILIZATION ANALYTICS
+
+6. Now we're ready for Notebook 02
+
+But don't start cleaning the data yet.
+
+The next thing we need to establish is data quality.
+
+We're going to investigate:
+
+Structural quality
+duplicate records
+duplicate IDs
+missing values
+column types
+date formats
+Referential integrity
+
+For example:
+
+Does every encounters.PATIENT
+actually exist in patients.Id?
+
+and:
+
+Does every observations.ENCOUNTER
+exist in encounters.Id?
+Temporal quality
+
+For example:
+
+START <= STOP
+
+and:
+
+encounter START <= encounter STOP
+Clinical consistency
+
+We'll look for things such as:
+
+impossible dates
+unexpected categorical values
+suspicious measurements
+inconsistent identifiers
+
+02_data_quality.ipynb
